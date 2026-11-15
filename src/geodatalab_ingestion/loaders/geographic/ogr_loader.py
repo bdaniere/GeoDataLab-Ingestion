@@ -539,9 +539,15 @@ class OgrLoader(BaseLoader):
             )
 
     def _get_database_environment(self) -> dict[str, str]:
-        """Load PostgreSQL connection settings from the Docker environment file."""
+        """Load PostgreSQL connection settings from the application environment file."""
 
-        env_path = Path(__file__).resolve().parents[3] / "docker" / ".env"
+        default_env_path = Path(__file__).resolve().parents[3] / "docker" / ".env"
+
+        env_path = (
+            Path(os.environ.get("GEODATALAB_ENV_FILE", str(default_env_path)))
+            .expanduser()
+            .resolve()
+        )
 
         if not env_path.is_file():
             raise FileNotFoundError(f"Environment file not found: {env_path}")
