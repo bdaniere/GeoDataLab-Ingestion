@@ -538,46 +538,47 @@ class OgrLoader(BaseLoader):
                 },
             )
 
+    def _get_database_environment(self) -> dict[str, str]:
+        """Load PostgreSQL connection settings from the application environment."""
 
-def _get_database_environment(self) -> dict[str, str]:
-    """Load PostgreSQL connection settings from the application environment."""
+        env_file = os.environ.get("GEODATALAB_ENV_FILE")
 
-    env_file = os.environ.get("GEODATALAB_ENV_FILE")
+        if env_file:
+            env_path = Path(env_file).expanduser().resolve()
 
-    if env_file:
-        env_path = Path(env_file).expanduser().resolve()
+            if not env_path.is_file():
+                raise FileNotFoundError(f"Environment file not found: {env_path}")
 
-        if not env_path.is_file():
-            raise FileNotFoundError(f"Environment file not found: {env_path}")
+            load_dotenv(dotenv_path=env_path)
 
-        load_dotenv(dotenv_path=env_path)
+        environment = os.environ.copy()
 
-    environment = os.environ.copy()
+        config = {
+            "POSTGRES_HOST": environment.get("POSTGRES_HOST", "localhost"),
+            "POSTGIS_PORT": environment.get("POSTGIS_PORT", "5432"),
+            "POSTGRES_DB": environment.get("POSTGRES_DB", ""),
+            "POSTGRES_USER": environment.get("POSTGRES_USER", ""),
+            "POSTGRES_PASSWORD": environment.get("POSTGRES_PASSWORD", ""),
+        }
 
-    config = {
-        "POSTGRES_HOST": environment.get("POSTGRES_HOST", "localhost"),
-        "POSTGIS_PORT": environment.get("POSTGIS_PORT", "5432"),
-        "POSTGRES_DB": environment.get("POSTGRES_DB", ""),
-        "POSTGRES_USER": environment.get("POSTGRES_USER", ""),
-        "POSTGRES_PASSWORD": environment.get("POSTGRES_PASSWORD", ""),
-    }
+        missing_variables = [
+            variable for variable, value in config.items() if not value
+        ]
 
-    missing_variables = [variable for variable, value in config.items() if not value]
+        if missing_variables:
+            raise ValueError(
+                "Missing or empty PostgreSQL variables in environment: "
+                f"{', '.join(missing_variables)}"
+            )
 
-    if missing_variables:
-        raise ValueError(
-            "Missing or empty PostgreSQL variables in environment: "
-            f"{', '.join(missing_variables)}"
+        environment.update(
+            {
+                "PGHOST": config["POSTGRES_HOST"],
+                "PGPORT": config["POSTGIS_PORT"],
+                "PGDATABASE": config["POSTGRES_DB"],
+                "PGUSER": config["POSTGRES_USER"],
+                "PGPASSWORD": config["POSTGRES_PASSWORD"],
+            }
         )
 
-    environment.update(
-        {
-            "PGHOST": config["POSTGRES_HOST"],
-            "PGPORT": config["POSTGIS_PORT"],
-            "PGDATABASE": config["POSTGRES_DB"],
-            "PGUSER": config["POSTGRES_USER"],
-            "PGPASSWORD": config["POSTGRES_PASSWORD"],
-        }
-    )
-
-    return environment
+        return environment
