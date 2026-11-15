@@ -6,16 +6,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import psycopg2
-from core.models import (
+from dotenv import load_dotenv
+from psycopg2 import sql
+from pyproj import CRS
+from pyproj.exceptions import CRSError
+
+from geodatalab_ingestion.core.models import (
     DestinationConfig,
     IngestionResult,
     SourceData,
 )
-from dotenv import load_dotenv
-from loaders.base import BaseLoader
-from psycopg2 import sql
-from pyproj import CRS
-from pyproj.exceptions import CRSError
+from geodatalab_ingestion.loaders.base import BaseLoader
 
 logger = logging.getLogger(__name__)
 

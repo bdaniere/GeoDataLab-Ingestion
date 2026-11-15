@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from core.models import (
+from geodatalab_ingestion.core.models import (
     DestinationConfig,
     IngestionResult,
     SourceData,

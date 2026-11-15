@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from core.models import SourceConfig, SourceData
+from geodatalab_ingestion.core.models import SourceConfig, SourceData
 
 
 class BaseSource(ABC):

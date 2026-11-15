@@ -1,4 +1,4 @@
-from core.models import IngestionResult, MultiLayerIngestionResult
+from geodatalab_ingestion.core.models import IngestionResult, MultiLayerIngestionResult
 
 
 class IngestionReport:

@@ -3,10 +3,10 @@ import json
 import sys
 from pathlib import Path
 
-from core.ingestion_report import IngestionReport
-from core.ingestion_runner import IngestionRunner
-from core.models import DestinationConfig, SourceConfig
-from core.sources.factory import SourceFactory
+from geodatalab_ingestion.core.ingestion_report import IngestionReport
+from geodatalab_ingestion.core.ingestion_runner import IngestionRunner
+from geodatalab_ingestion.core.models import DestinationConfig, SourceConfig
+from geodatalab_ingestion.core.sources.factory import SourceFactory
 
 
 def load_configuration(config_path: Path) -> dict:

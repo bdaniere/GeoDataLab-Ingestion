@@ -1,6 +1,6 @@
-from core.sources.base import BaseSource
-from core.sources.http_source import HttpSource
-from core.sources.local_source import LocalSource
+from geodatalab_ingestion.core.sources.base import BaseSource
+from geodatalab_ingestion.core.sources.http_source import HttpSource
+from geodatalab_ingestion.core.sources.local_source import LocalSource
 
 
 class SourceFactory:

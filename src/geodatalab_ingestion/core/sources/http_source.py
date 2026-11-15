@@ -1,9 +1,9 @@
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-from core.download_manager import DownloadManager
-from core.models import SourceConfig, SourceData
-from core.sources.base import BaseSource
+from geodatalab_ingestion.core.download_manager import DownloadManager
+from geodatalab_ingestion.core.models import SourceConfig, SourceData
+from geodatalab_ingestion.core.sources.base import BaseSource
 
 USER_AGENT = "GeoDataLab/1.0"
 

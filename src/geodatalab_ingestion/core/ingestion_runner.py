@@ -2,16 +2,16 @@ import logging
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from core.ingestion_history import IngestionHistory
-from core.models import (
+from geodatalab_ingestion.core.ingestion_history import IngestionHistory
+from geodatalab_ingestion.core.models import (
     DestinationConfig,
     IngestionResult,
     MultiLayerIngestionResult,
     SourceData,
 )
-from core.table_naming import generate_table_names
-from extraction.layer_discovery import LayerDiscovery
-from loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.core.table_naming import generate_table_names
+from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery
+from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from core.models import SourceConfig, SourceData
-from core.sources.base import BaseSource
+from geodatalab_ingestion.core.models import SourceConfig, SourceData
+from geodatalab_ingestion.core.sources.base import BaseSource
 
 
 class LocalSource(BaseSource):
