@@ -43,8 +43,10 @@ def normalize_identifier(value: str) -> str:
 def generate_table_names(
     source_path: str | Path,
     layer_names: Sequence[str],
+    *,
+    source_name: str | None = None,
 ) -> dict[str, str]:
-    """Generate PostgreSQL table names for the layers of a source file."""
+    """Generate table names from source_name, or the file stem if it is omitted."""
 
     if not layer_names:
         raise ValueError("At least one source layer is required.")
@@ -52,7 +54,9 @@ def generate_table_names(
     if len(set(layer_names)) != len(layer_names):
         raise ValueError("Duplicate source layer names detected.")
 
-    source_prefix = normalize_identifier(Path(source_path).stem)
+    source_prefix = normalize_identifier(
+        Path(source_path).stem if source_name is None else source_name
+    )
 
     generated_names = {}
 

@@ -110,6 +110,7 @@ class IngestionRunner:
         table_names = generate_table_names(
             source_path=source.content,
             layer_names=layer_names,
+            source_name=source.source_name,
         )
 
         loading_mode = destination.options.get("mode", "create")
