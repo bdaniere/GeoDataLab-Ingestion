@@ -29,7 +29,7 @@ def test_csv_ingestion_from_local_and_http(
     assert result.source_feature_count == 2
     assert result.destination_record_count == 2
     assert result.records_inserted == 2
-    assert rows(database, "donnees") == [(1, "Lyon"), (2, "Paris")]
+    assert rows(database, "data") == [(1, "Lyon"), (2, "Paris")]
 
 
 def test_http_csv_without_url_extension(database, tabular_testdata, tabular_source):
@@ -48,7 +48,7 @@ def test_http_csv_without_url_extension(database, tabular_testdata, tabular_sour
     assert source.format == "csv"
     assert result.success
     assert result.records_inserted == 2
-    assert rows(database, "consommation") == [(1, "Lyon"), (2, "Paris")]
+    assert rows(database, "data") == [(1, "Lyon"), (2, "Paris")]
 
 
 @pytest.mark.parametrize("extension", ["xlsx", "xls"])
@@ -64,8 +64,8 @@ def test_excel_all_sheets_are_loaded(
     assert result.success
     assert list(result.layer_results) == ["Villes", "Pays"]
     assert result.records_inserted == 2
-    assert rows(database, "population_villes") == [(1, "Lyon")]
-    assert rows(database, "population_pays") == [(2, "France")]
+    assert rows(database, "data_villes") == [(1, "Lyon")]
+    assert rows(database, "data_pays") == [(2, "France")]
 
 
 def test_loading_modes_and_counts(database, tabular_testdata):

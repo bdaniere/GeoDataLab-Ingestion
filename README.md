@@ -31,8 +31,8 @@ use OGR. CSV files, including those with coordinate columns, are treated as
 non-geographic tables; no geometry is created. CSV files are loaded into one
 table; every Excel sheet is loaded into
 its own table. Table names follow the same rules as geographic layers: a single
-table uses the normalized file stem, while multiple sheets use the normalized
-file stem and sheet name. Name collisions are reported as errors.
+table uses the normalized `source.name`, while multiple sheets use the normalized
+source name and sheet name. Name collisions are reported as errors.
 
 Example configuration for a local CSV (replace `location` with an HTTP URL and
 `type` with `http` for a remote file):
@@ -114,13 +114,24 @@ case-sensitive path within the archive:
 }
 ```
 
-The selected file's name determines destination table names, just as for an
-uncompressed source. All archive files are extracted together so associated
+Destination table names use `source.name`, just as for an uncompressed source.
+All archive files are extracted together so associated
 files such as `.dbf`, `.shx` and `.prj` remain available. Extraction uses a
 private temporary directory, removed after ingestion even on failure. Unsafe
 paths, links, special files, encrypted members and duplicate paths are rejected.
 Archives are limited to 10,000 entries and 10 GiB of uncompressed data. Encrypted
 archives are not supported. Nested archives are not unpacked recursively.
+
+## Destination table names
+
+For a source with one layer or sheet, the table name is the normalized
+`source.name`; with multiple layers or sheets, each table is named
+`source.name` followed by `_` and the layer or sheet name. Names are converted
+to lowercase ASCII identifiers and limited to 63 characters; collisions cause
+an error. This naming applies to local and HTTP sources, including archives.
+It replaces the previous file-based naming: existing tables are not renamed or
+deleted. In `append` and `overwrite` modes, verify the new table name before
+running an existing configuration.
 
 For example:
 

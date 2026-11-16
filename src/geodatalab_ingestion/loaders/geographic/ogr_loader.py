@@ -229,11 +229,7 @@ class OgrLoader(BaseLoader):
         except subprocess.CalledProcessError as error:
             raise ValueError(f"Unable to inspect source file: {source_path}") from error
 
-        available_layers = [
-            line.strip().split(": ", 1)[1].split(" ", 1)[0]
-            for line in process.stdout.splitlines()
-            if ": " in line
-        ]
+        available_layers = LayerDiscovery._parse_layer_listing(process.stdout)
 
         if source_layer not in available_layers:
             raise ValueError(

@@ -59,9 +59,9 @@ def test_runner_loads_all_layers():
     assert result.failed_layers == 0
     assert len(loader.calls) == 3
     assert [call[1].table for call in loader.calls] == [
-        "imope_42005_adresse",
-        "imope_42005_bati",
-        "imope_42005_activite",
+        "imope_adresse",
+        "imope_bati",
+        "imope_activite",
     ]
     assert [call[0].metadata["source_layer"] for call in loader.calls] == [
         "adresse",
@@ -108,5 +108,5 @@ def test_runner_continues_after_layer_failure():
     assert failed_result.metadata == {
         "source_layer": "bati",
         "destination_schema": "raw_data",
-        "destination_table": "imope_42005_bati",
+        "destination_table": "imope_bati",
     }

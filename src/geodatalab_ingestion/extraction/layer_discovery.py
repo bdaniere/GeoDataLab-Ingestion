@@ -92,7 +92,7 @@ class LayerDiscovery:
 
         for line in output.splitlines():
             match = re.match(
-                r"^\s*\d+:\s*(.*?)\s+\([^()]*\)\s*$",
+                r"^\s*\d+:\s*(.+?)(?:\s+\([^()]*\))?\s*$",
                 line,
             )
 

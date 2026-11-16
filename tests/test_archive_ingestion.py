@@ -38,7 +38,7 @@ def test_zip_csv_ingestion(database, tmp_path, tabular_source, source_type):
     assert result.records_inserted == 2
     with database.connect() as connection:
         assert connection.execute(
-            text("SELECT * FROM population ORDER BY id")
+            text("SELECT * FROM data ORDER BY id")
         ).all() == [(1, "Lyon"), (2, "Paris")]
     assert source.content.exists()
     assert not Path(result.layer_results["population"].metadata["source_file"]).exists()
@@ -131,7 +131,7 @@ def test_geo_discovery_and_loading_use_extracted_file_and_cleanup_on_failure(
     class Loader:
         def load(self, source, destination):
             assert source.content == seen[0]
-            assert destination.table == "test"
+            assert destination.table == "geo"
             raise RuntimeError("load failed")
 
     monkeypatch.setattr(IngestionRunner, "_initialize_history", lambda self: None)
@@ -166,13 +166,13 @@ def test_zip_shapefile_full_postgis_ingestion(tmp_path, postgis, monkeypatch):
         cursor.execute(
             "SELECT f_geometry_column FROM geometry_columns "
             "WHERE f_table_schema = %s AND f_table_name = %s",
-            (schema, "test"),
+            (schema, "shapes"),
         )
         geometry_columns = cursor.fetchall()
         assert len(geometry_columns) == 1
         cursor.execute(
             sql.SQL(
-                "SELECT nom, categorie, ST_SRID({geometry}) FROM {schema}.test"
+                "SELECT nom, categorie, ST_SRID({geometry}) FROM {schema}.shapes"
             ).format(
                 geometry=sql.Identifier(geometry_columns[0][0]),
                 schema=sql.Identifier(schema),
