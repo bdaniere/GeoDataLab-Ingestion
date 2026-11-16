@@ -32,6 +32,25 @@ def test_csv_ingestion_from_local_and_http(
     assert rows(database, "donnees") == [(1, "Lyon"), (2, "Paris")]
 
 
+def test_http_csv_without_url_extension(database, tabular_testdata, tabular_source):
+    source = tabular_source(
+        tabular_testdata / "donnees.csv",
+        "http",
+        {
+            "filename": "consommation.csv",
+            "read_options": {"sep": ";", "encoding": "utf-8"},
+        },
+        url="https://example.test/api/datasets/r/12345",
+    )
+
+    result = IngestionRunner().run(source, DestinationConfig("postgis", "main"))
+
+    assert source.format == "csv"
+    assert result.success
+    assert result.records_inserted == 2
+    assert rows(database, "consommation") == [(1, "Lyon"), (2, "Paris")]
+
+
 @pytest.mark.parametrize("extension", ["xlsx", "xls"])
 @pytest.mark.parametrize("source_type", ["local", "http"])
 def test_excel_all_sheets_are_loaded(
