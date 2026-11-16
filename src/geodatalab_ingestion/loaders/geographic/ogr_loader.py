@@ -16,6 +16,7 @@ from geodatalab_ingestion.core.models import (
     IngestionResult,
     SourceData,
 )
+from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery
 from geodatalab_ingestion.loaders.base import BaseLoader
 
 logger = logging.getLogger(__name__)
@@ -320,6 +321,28 @@ class OgrLoader(BaseLoader):
 
         return sum(int(count) for count in feature_counts)
 
+    @staticmethod
+    def _promote_to_multi(
+        source_path: Path, source_layer: str | None, configured: object
+    ) -> bool:
+        if configured is not None:
+            if not isinstance(configured, bool):
+                raise ValueError("promote_to_multi must be a boolean.")
+            return configured
+        if source_path.suffix.lower() != ".shp":
+            return False
+
+        layers = LayerDiscovery().discover(source_path)
+        selected = [
+            layer for layer in layers
+            if source_layer is None or layer.name == source_layer
+        ]
+        if len(selected) != 1:
+            raise ValueError(f"Unable to identify shapefile layer: {source_path}")
+        if selected[0].geometry_type == "Unknown":
+            raise ValueError(f"Unable to determine shapefile geometry type: {source_path}")
+        return bool(re.search(r"\bpolygon\b", selected[0].geometry_type, re.IGNORECASE))
+
     def load(
         self,
         source: SourceData,
@@ -370,6 +393,13 @@ class OgrLoader(BaseLoader):
 
         target_crs = options.get("target_crs")
         self._validate_target_crs(target_crs)
+        if "promote_to_multi" in options and not isinstance(
+            options["promote_to_multi"], bool
+        ):
+            raise ValueError("promote_to_multi must be a boolean.")
+        promote_to_multi = self._promote_to_multi(
+            source_path, source_layer, options.get("promote_to_multi")
+        )
 
         ogr_command = [
             "ogr2ogr",
@@ -388,6 +418,9 @@ class OgrLoader(BaseLoader):
                 f"{destination.schema}.{destination.table}",
             ]
         )
+
+        if promote_to_multi:
+            ogr_command.extend(["-nlt", "PROMOTE_TO_MULTI"])
 
         if mode == "overwrite":
             ogr_command.extend(

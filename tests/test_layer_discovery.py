@@ -91,3 +91,12 @@ def test_discover_multiple_layers(geopackage, monkeypatch):
     assert result[0].epsg == 2154
     assert result[1].name == "activite"
     assert result[1].geometry_type == "None"
+
+
+def test_discover_real_layer_metadata(geopackage, ogrinfo):
+    layers = LayerDiscovery().discover(geopackage)
+
+    layer = next(layer for layer in layers if layer.name == "villes")
+    assert layer.geometry_type == "Point"
+    assert layer.feature_count == 2
+    assert layer.epsg == 4326

@@ -8,6 +8,7 @@ Python library for geospatial and tabular data ingestion into PostgreSQL/PostGIS
 - Geospatial layer discovery
 - OGR-based ingestion into PostGIS
 - CSV and Excel (.xlsx and .xls) ingestion using pandas
+- ZIP and 7z archives from local and HTTP sources
 - Multi-layer ingestion orchestration
 - Ingestion history and reporting
 
@@ -65,6 +66,61 @@ such as postal codes must remain strings. The destination modes are `create`
 (require an existing compatible table). Each table is loaded transactionally.
 `target_crs` applies only to geographic data. Ingestion history and reports use
 the existing layer and feature terminology for sheets and rows.
+
+## Geographic geometry types
+
+Polygon shapefiles can contain both Polygon and MultiPolygon features, even
+when OGR reports their layer type as Polygon. By default the loader promotes
+polygon shapefile geometries to MultiPolygon, so PostGIS can store both types.
+This applies equally to shapefiles extracted from archives. Point and line
+shapefiles and other source formats retain their existing behavior.
+
+Set `destination.options.promote_to_multi` to `true` to request OGR's
+`PROMOTE_TO_MULTI` for other formats or geometry types, or to `false` to disable
+automatic promotion. In append mode, the existing destination geometry column
+must be compatible with the resulting type; promotion does not alter it.
+Disabling promotion for mixed Polygon/MultiPolygon data can cause loading to
+fail.
+
+## ZIP and 7z archives
+
+Local and HTTP sources can point to ZIP or 7z archives. Archives are detected
+by their extension or contents. If an HTTP URL has no extension, optionally set
+`source.options.filename` to a name ending in `.zip` or `.7z`. Formats such as
+XLSX and KMZ are ZIP containers and are handled directly by their loaders.
+
+An archive containing exactly one recognized dataset is selected automatically.
+Recognized extensions are CSV, XLSX, XLS, SHP, GPKG, GeoJSON, JSON, GeoJSONL,
+NDJSON, GML, KML, KMZ, FGB, SQLite and Parquet. Other files, including
+shapefile sidecars, do not count as datasets. When there are several datasets,
+or to select another format supported by OGR, specify the exact,
+case-sensitive path within the archive:
+
+```json
+{
+  "source": {
+    "name": "communes",
+    "type": "local",
+    "location": "/path/to/data.zip",
+    "options": {
+      "archive_member": "geographic/communes.shp"
+    }
+  },
+  "destination": {
+    "type": "postgis",
+    "schema": "raw_data",
+    "mode": "create"
+  }
+}
+```
+
+The selected file's name determines destination table names, just as for an
+uncompressed source. All archive files are extracted together so associated
+files such as `.dbf`, `.shx` and `.prj` remain available. Extraction uses a
+private temporary directory, removed after ingestion even on failure. Unsafe
+paths, links, special files, encrypted members and duplicate paths are rejected.
+Archives are limited to 10,000 entries and 10 GiB of uncompressed data. Encrypted
+archives are not supported. Nested archives are not unpacked recursively.
 
 For example:
 

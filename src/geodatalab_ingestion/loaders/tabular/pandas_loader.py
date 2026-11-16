@@ -52,7 +52,7 @@ class PandasLoader(BaseLoader):
 
         read_options = source.metadata.get("read_options", {})
         if not isinstance(read_options, dict):
-            raise ValueError("read_options must be a dictionary.")
+            raise TypeError("read_options must be a dictionary.")
         allowed_options = (
             {"sep", "encoding", "decimal", "dtype", "header"}
             if source_format == "csv"

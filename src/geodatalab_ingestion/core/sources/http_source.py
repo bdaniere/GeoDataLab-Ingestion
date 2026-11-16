@@ -83,5 +83,10 @@ class HttpSource(BaseSource):
                     if "read_options" in config.options
                     else {}
                 ),
+                **(
+                    {"archive_member": config.options["archive_member"]}
+                    if "archive_member" in config.options
+                    else {}
+                ),
             },
         )

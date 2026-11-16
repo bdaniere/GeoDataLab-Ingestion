@@ -1,9 +1,52 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 from geodatalab_ingestion.core.models import DestinationConfig, SourceData
+from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery, LayerInfo
 from geodatalab_ingestion.loaders.geographic import ogr_loader
 from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
+
+
+@pytest.mark.parametrize(
+    "filename,geometry,setting,expected",
+    [
+        ("data.shp", "Polygon", None, True),
+        ("data.SHP", "3D Polygon", None, True),
+        ("data.shp", "Multi Polygon", None, True),
+        ("data.shp", "Point", None, False),
+        ("data.shp", "Line String", None, False),
+        ("data.geojson", "Polygon", None, False),
+        ("data.geojson", "Polygon", True, True),
+        ("data.shp", "Polygon", False, False),
+    ],
+)
+def test_promotion_policy(monkeypatch, filename, geometry, setting, expected):
+    monkeypatch.setattr(
+        LayerDiscovery, "discover", lambda self, path: [LayerInfo("data", geometry)]
+    )
+    assert OgrLoader._promote_to_multi(Path(filename), "data", setting) is expected
+
+
+def test_shapefile_promotion_rejects_unknown_geometry(monkeypatch):
+    monkeypatch.setattr(
+        LayerDiscovery, "discover", lambda self, path: [LayerInfo("data", "Unknown")]
+    )
+    with pytest.raises(ValueError, match="Unable to determine shapefile geometry"):
+        OgrLoader._promote_to_multi(Path("data.shp"), "data", None)
+
+
+@pytest.mark.parametrize("value", ["true", 1, None, [], {}])
+def test_promotion_option_must_be_boolean(tmp_path, value):
+    source_path = tmp_path / "source.geojson"
+    source_path.touch()
+    with pytest.raises(ValueError, match="promote_to_multi must be a boolean"):
+        OgrLoader().load(
+            SourceData("source", "local", source_path),
+            DestinationConfig(
+                "postgis", "raw_data", "features", {"promote_to_multi": value}
+            ),
+        )
 
 
 @pytest.fixture

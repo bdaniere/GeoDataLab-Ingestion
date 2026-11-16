@@ -13,6 +13,7 @@ from geodatalab_ingestion.core.models import (
     SourceData,
 )
 from geodatalab_ingestion.core.table_naming import generate_table_names
+from geodatalab_ingestion.extraction.archive_manager import ArchiveManager
 from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery
 from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 from geodatalab_ingestion.loaders.tabular.pandas_loader import PandasLoader
@@ -69,9 +70,6 @@ class IngestionRunner:
         Returns:
             MultiLayerIngestionResult: Global and per-layer results.
         """
-
-        started_at = datetime.now(UTC)
-
         if destination.destination_type != "postgis":
             raise NotImplementedError(
                 f"Unsupported destination type: {destination.destination_type}"
@@ -82,6 +80,16 @@ class IngestionRunner:
                 "Destination table must not be specified for multi-layer ingestion."
             )
 
+        started_at = datetime.now(UTC)
+        with ArchiveManager().prepare(source) as prepared_source:
+            return self._run_prepared(prepared_source, destination, started_at)
+
+    def _run_prepared(
+        self,
+        source: SourceData,
+        destination: DestinationConfig,
+        started_at: datetime,
+    ) -> MultiLayerIngestionResult:
         source_path = Path(source.content)
         source_format = (source.format or source_path.suffix.lstrip(".")).lower()
         is_tabular = source_format in {"csv", "xlsx", "xls"}
@@ -122,7 +130,7 @@ class IngestionRunner:
             try:
                 ingestion_id = history.start_ingestion(
                     source_name=source.source_name,
-                    source_path=str(source.content),
+                    source_path=str(source.metadata.get("archive_path", source.content)),
                     destination_schema=destination.schema,
                     loading_mode=loading_mode,
                     started_at=started_at,
