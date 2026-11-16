@@ -1,6 +1,9 @@
 import logging
 from dataclasses import replace
 from datetime import UTC, datetime
+from pathlib import Path
+
+import pandas as pd
 
 from geodatalab_ingestion.core.ingestion_history import IngestionHistory
 from geodatalab_ingestion.core.models import (
@@ -12,20 +15,23 @@ from geodatalab_ingestion.core.models import (
 from geodatalab_ingestion.core.table_naming import generate_table_names
 from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery
 from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.loaders.tabular.pandas_loader import PandasLoader
 
 logger = logging.getLogger(__name__)
 
 
 class IngestionRunner:
-    """Orchestrate the ingestion of multi-layer source files."""
+    """Orchestrate ingestion of geographic layers and tabular files."""
 
     def __init__(
         self,
         loader: OgrLoader | None = None,
         layer_discovery: LayerDiscovery | None = None,
+        pandas_loader: PandasLoader | None = None,
     ):
         self.loader = loader or OgrLoader()
         self.layer_discovery = layer_discovery or LayerDiscovery()
+        self.pandas_loader = pandas_loader or PandasLoader()
 
     def _initialize_history(self) -> IngestionHistory | None:
         """Initialize persistent ingestion history.
@@ -76,11 +82,26 @@ class IngestionRunner:
                 "Destination table must not be specified for multi-layer ingestion."
             )
 
-        layers = self.layer_discovery.discover(source.content)
+        source_path = Path(source.content)
+        source_format = (source.format or source_path.suffix.lstrip(".")).lower()
+        is_tabular = source_format in {"csv", "xlsx", "xls"}
+
+        if source_format == "csv":
+            layer_names = [source_path.stem]
+        elif source_format in {"xlsx", "xls"}:
+            with pd.ExcelFile(source_path) as workbook:
+                sheet_names = workbook.sheet_names
+                if any(not isinstance(name, str) for name in sheet_names):
+                    raise ValueError("Excel sheet names must be strings.")
+                layer_names = [name for name in sheet_names if isinstance(name, str)]
+        else:
+            layer_names = [
+                layer.name for layer in self.layer_discovery.discover(source.content)
+            ]
 
         table_names = generate_table_names(
             source_path=source.content,
-            layer_names=[layer.name for layer in layers],
+            layer_names=layer_names,
         )
 
         loading_mode = destination.options.get("mode", "create")
@@ -88,7 +109,7 @@ class IngestionRunner:
         logger.info(
             "Ingestion started | source=%s | layers=%d | schema=%s | mode=%s",
             source.source_name,
-            len(layers),
+            len(layer_names),
             destination.schema,
             loading_mode,
         )
@@ -119,14 +140,14 @@ class IngestionRunner:
 
         layer_results = {}
 
-        for layer in layers:
-            table_name = table_names[layer.name]
+        for layer_name in layer_names:
+            table_name = table_names[layer_name]
 
             layer_source = replace(
                 source,
                 metadata={
                     **source.metadata,
-                    "source_layer": layer.name,
+                    "source_layer": layer_name,
                 },
             )
 
@@ -140,12 +161,12 @@ class IngestionRunner:
             logger.info(
                 "Layer ingestion started | source=%s | layer=%s | table=%s",
                 source.source_name,
-                layer.name,
+                layer_name,
                 table_name,
             )
 
             try:
-                result = self.loader.load(
+                result = (self.pandas_loader if is_tabular else self.loader).load(
                     source=layer_source,
                     destination=layer_destination,
                 )
@@ -153,7 +174,7 @@ class IngestionRunner:
             except Exception as error:
                 logger.exception(
                     "Unexpected error during layer ingestion | layer=%s",
-                    layer.name,
+                    layer_name,
                 )
 
                 result = IngestionResult(
@@ -163,24 +184,24 @@ class IngestionRunner:
                     finished_at=datetime.now(UTC),
                     error=str(error),
                     metadata={
-                        "source_layer": layer.name,
+                        "source_layer": layer_name,
                         "destination_schema": destination.schema,
                         "destination_table": table_name,
                     },
                 )
 
-            layer_results[layer.name] = result
+            layer_results[layer_name] = result
 
             if result.success:
                 logger.info(
                     "Layer ingestion completed | layer=%s | duration=%s",
-                    layer.name,
+                    layer_name,
                     result.duration_seconds,
                 )
             else:
                 logger.warning(
                     "Layer ingestion failed | layer=%s | error=%s",
-                    layer.name,
+                    layer_name,
                     result.error,
                 )
 
@@ -189,7 +210,7 @@ class IngestionRunner:
                 try:
                     history.record_layer_result(
                         ingestion_id=ingestion_id,
-                        layer_name=layer.name,
+                        layer_name=layer_name,
                         destination_table=table_name,
                         result=result,
                     )
@@ -197,7 +218,7 @@ class IngestionRunner:
                 except Exception:
                     logger.exception(
                         "Unable to persist layer history | layer=%s",
-                        layer.name,
+                        layer_name,
                     )
 
         finished_at = datetime.now(UTC)

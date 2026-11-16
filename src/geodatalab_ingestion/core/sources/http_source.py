@@ -78,5 +78,10 @@ class HttpSource(BaseSource):
                 "url": config.location,
                 "file_path": str(downloaded_file),
                 "file_size": downloaded_file.stat().st_size,
+                **(
+                    {"read_options": config.options["read_options"]}
+                    if "read_options" in config.options
+                    else {}
+                ),
             },
         )
