@@ -30,11 +30,11 @@ class PandasLoader(BaseLoader):
         started_at = datetime.now(UTC)
 
         if destination.destination_type != "postgis":
-            raise ValueError(
+            raise NotImplementedError(
                 f"Unsupported destination type: {destination.destination_type}"
             )
         if destination.table is None:
-            raise NotImplementedError("A destination table is required.")
+            raise ValueError("A destination table is required.")
         OgrLoader._validate_destination_identifiers(
             destination.schema, destination.table
         )
