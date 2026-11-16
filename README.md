@@ -8,6 +8,7 @@ Python library for geospatial and tabular data ingestion into PostgreSQL/PostGIS
 - Geospatial layer discovery
 - OGR-based ingestion into PostGIS
 - CSV and Excel (.xlsx and .xls) ingestion using pandas
+- ZIP archives from local and HTTP sources
 - Multi-layer ingestion orchestration
 - Ingestion history and reporting
 
@@ -65,6 +66,46 @@ such as postal codes must remain strings. The destination modes are `create`
 (require an existing compatible table). Each table is loaded transactionally.
 `target_crs` applies only to geographic data. Ingestion history and reports use
 the existing layer and feature terminology for sheets and rows.
+
+## ZIP archives
+
+Local and HTTP sources can point to a ZIP archive. If an HTTP URL has no
+extension, set `source.options.filename` to a name ending in `.zip`. ZIPs are
+also detected by their contents, except for formats such as XLSX and KMZ that
+are themselves ZIP containers and are handled directly by their loaders.
+
+An archive containing exactly one recognized dataset is selected automatically.
+Recognized extensions are CSV, XLSX, XLS, SHP, GPKG, GeoJSON, JSON, GeoJSONL,
+NDJSON, GML, KML, KMZ, FGB, SQLite and Parquet. Other files, including
+shapefile sidecars, do not count as datasets. When there are several datasets,
+or to select another format supported by OGR, specify the exact,
+case-sensitive path within the ZIP:
+
+```json
+{
+  "source": {
+    "name": "communes",
+    "type": "local",
+    "location": "/path/to/data.zip",
+    "options": {
+      "archive_member": "geographic/communes.shp"
+    }
+  },
+  "destination": {
+    "type": "postgis",
+    "schema": "raw_data",
+    "mode": "create"
+  }
+}
+```
+
+The selected file's name determines destination table names, just as for an
+uncompressed source. All archive files are extracted together so associated
+files such as `.dbf`, `.shx` and `.prj` remain available. Extraction uses a
+private temporary directory, removed after ingestion even on failure. Unsafe
+paths, links, special files, encrypted members and duplicate paths are rejected.
+Archives are limited to 10,000 entries and 10 GiB of uncompressed data. Nested
+archives are not unpacked recursively.
 
 For example:
 
