@@ -30,18 +30,16 @@ def test_zip_csv_ingestion(database, tmp_path, tabular_source, source_type):
         tmp_path / "data.zip",
         {"nested/population.csv": "id;nom\n1;Lyon\n2;Paris\n", "notes.txt": "notes"},
     )
-    source = tabular_source(
-        archive, source_type, {"read_options": {"sep": ";"}}
-    )
+    source = tabular_source(archive, source_type, {"read_options": {"sep": ";"}})
 
     result = IngestionRunner().run(source, DestinationConfig("postgis", "main"))
 
     assert result.success
     assert result.records_inserted == 2
     with database.connect() as connection:
-        assert connection.execute(text("SELECT * FROM population ORDER BY id")).all() == [
-            (1, "Lyon"), (2, "Paris")
-        ]
+        assert connection.execute(
+            text("SELECT * FROM population ORDER BY id")
+        ).all() == [(1, "Lyon"), (2, "Paris")]
     assert source.content.exists()
     assert not Path(result.layer_results["population"].metadata["source_file"]).exists()
 
@@ -54,9 +52,7 @@ def test_archive_member_option_selects_exact_file(
         tmp_path / "data.zip",
         {"one/data.csv": "id\n1\n", "two/data.csv": "id\n2\n"},
     )
-    source = tabular_source(
-        archive, source_type, {"archive_member": "two/data.csv"}
-    )
+    source = tabular_source(archive, source_type, {"archive_member": "two/data.csv"})
 
     result = IngestionRunner().run(source, DestinationConfig("postgis", "main"))
 
@@ -88,7 +84,11 @@ def test_zip_shapefile_keeps_sidecars_for_discovery_and_loading(
     shapefile_dir = Path(__file__).parent / "testdata" / "test_shapefile"
     archive = make_zip(
         tmp_path / "shapes.zip",
-        {f"nested/{p.name}": p.read_bytes() for p in shapefile_dir.iterdir() if p.is_file()},
+        {
+            f"nested/{p.name}": p.read_bytes()
+            for p in shapefile_dir.iterdir()
+            if p.is_file()
+        },
     )
     seen = []
 
@@ -115,7 +115,9 @@ def test_zip_shapefile_keeps_sidecars_for_discovery_and_loading(
 def test_geo_discovery_and_loading_use_extracted_file_and_cleanup_on_failure(
     tmp_path, monkeypatch
 ):
-    archive = make_zip(tmp_path / "geo.zip", {"dir/test.shp": b"shp", "dir/test.dbf": b"dbf"})
+    archive = make_zip(
+        tmp_path / "geo.zip", {"dir/test.shp": b"shp", "dir/test.dbf": b"dbf"}
+    )
     seen = []
 
     class Discovery:
@@ -146,7 +148,11 @@ def test_zip_shapefile_full_postgis_ingestion(tmp_path, postgis, monkeypatch):
     shapefile_dir = Path(__file__).parent / "testdata" / "test_shapefile"
     archive = make_zip(
         tmp_path / "shapes.zip",
-        {f"nested/{p.name}": p.read_bytes() for p in shapefile_dir.iterdir() if p.is_file()},
+        {
+            f"nested/{p.name}": p.read_bytes()
+            for p in shapefile_dir.iterdir()
+            if p.is_file()
+        },
     )
     monkeypatch.setattr(IngestionRunner, "_initialize_history", lambda self: None)
 
@@ -165,7 +171,9 @@ def test_zip_shapefile_full_postgis_ingestion(tmp_path, postgis, monkeypatch):
         geometry_columns = cursor.fetchall()
         assert len(geometry_columns) == 1
         cursor.execute(
-            sql.SQL("SELECT nom, categorie, ST_SRID({geometry}) FROM {schema}.test").format(
+            sql.SQL(
+                "SELECT nom, categorie, ST_SRID({geometry}) FROM {schema}.test"
+            ).format(
                 geometry=sql.Identifier(geometry_columns[0][0]),
                 schema=sql.Identifier(schema),
             )
@@ -232,15 +240,21 @@ def test_archive_history_keeps_original_path_and_selected_member(tmp_path, monke
 def test_selection_errors(tmp_path, files, member, message):
     archive = make_zip(tmp_path / "data.zip", files)
     source = SourceData("data", "local", archive, "zip", {"archive_member": member})
-    with pytest.raises(ValueError, match=message):
-        with ArchiveManager().prepare(source):
-            pass
+    with pytest.raises(ValueError, match=message), ArchiveManager().prepare(source):
+        pass
 
 
 @pytest.mark.parametrize(
     "name",
-    ["../escape.csv", "/absolute.csv", "dir/../../escape.csv", "dir\\escape.csv",
-     "C:/escape.csv", "dir/./file.csv", "dir//file.csv"],
+    [
+        "../escape.csv",
+        "/absolute.csv",
+        "dir/../../escape.csv",
+        "dir\\escape.csv",
+        "C:/escape.csv",
+        "dir/./file.csv",
+        "dir//file.csv",
+    ],
 )
 def test_unsafe_paths_are_rejected(tmp_path, name):
     archive = make_zip(tmp_path / "data.zip", {name: "data", "safe.csv": "data"})
@@ -289,7 +303,7 @@ def test_content_detection_and_non_archive_validation(tmp_path):
 
     plain = tmp_path / "data.csv"
     plain.write_text("id\n1\n")
-    with pytest.raises(ValueError, match="requires a ZIP"):
+    with pytest.raises(ValueError, match="requires a ZIP or 7z"):
         with ArchiveManager().prepare(
             SourceData("data", "local", plain, "csv", {"archive_member": "data.csv"})
         ):
@@ -312,7 +326,9 @@ def test_corrupt_zip_and_size_limit_are_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "geodatalab_ingestion.extraction.archive_manager.MAX_UNCOMPRESSED_SIZE", 100
     )
-    monkeypatch.setattr("geodatalab_ingestion.extraction.archive_manager.MAX_ARCHIVE_FILES", 0)
+    monkeypatch.setattr(
+        "geodatalab_ingestion.extraction.archive_manager.MAX_ARCHIVE_FILES", 0
+    )
     with pytest.raises(ValueError, match="more than 0 entries"):
         with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
             pass

@@ -3,9 +3,11 @@ import stat
 import tempfile
 import zipfile
 from collections.abc import Generator
-from contextlib import contextmanager
-from dataclasses import replace
+from contextlib import ExitStack, contextmanager
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath, PureWindowsPath
+
+import py7zr
 
 from geodatalab_ingestion.core.models import SourceData
 
@@ -30,8 +32,15 @@ DATASET_EXTENSIONS = {
 }
 
 
+@dataclass(frozen=True)
+class ArchiveEntry:
+    filename: str
+    is_directory: bool
+    size: int
+
+
 class ArchiveManager:
-    """Prepare ZIP datasets in a private temporary directory."""
+    """Prepare ZIP and 7z datasets in a private temporary directory."""
 
     @contextmanager
     def prepare(self, source: SourceData) -> Generator[SourceData]:
@@ -39,33 +48,48 @@ class ArchiveManager:
         source_format = (source.format or path.suffix.lstrip(".")).lower()
         member = source.metadata.get("archive_member")
         # XLSX and KMZ are ZIP containers handled directly by their loaders.
-        is_archive = source_format == "zip" or (
+        archive_format = None
+        if source_format == "7z" or py7zr.is_7zfile(path):
+            archive_format = "7z"
+        elif source_format == "zip" or (
             source_format not in {"xlsx", "kmz"} and zipfile.is_zipfile(path)
-        )
-        if not is_archive:
+        ):
+            archive_format = "ZIP"
+        if archive_format is None:
             if member is not None:
-                raise ValueError("archive_member requires a ZIP source.")
+                raise ValueError("archive_member requires a ZIP or 7z source.")
             yield source
             return
 
-        with (
-            zipfile.ZipFile(path) as archive,
-            tempfile.TemporaryDirectory(prefix="geodatalab-archive-") as directory,
-        ):
-            entries = self._validate_entries(archive)
-            selected = self._select_member(entries, member)
+        with ExitStack() as stack:
+            directory = stack.enter_context(
+                tempfile.TemporaryDirectory(prefix="geodatalab-archive-")
+            )
+            if archive_format == "ZIP":
+                archive = stack.enter_context(zipfile.ZipFile(path))
+                entries = self._zip_entries(archive)
+            else:
+                archive = stack.enter_context(
+                    py7zr.SevenZipFile(path, max_extract_size=MAX_UNCOMPRESSED_SIZE)
+                )
+                entries = self._seven_entries(archive)
+            self._validate_entries(entries, archive_format)
+            selected = self._select_member(entries, member, archive_format)
             root = Path(directory)
-            for entry in entries:
-                target = root.joinpath(*PurePosixPath(entry.filename).parts)
-                if entry.is_dir():
-                    target.mkdir(parents=True, exist_ok=True)
-                    continue
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with (
-                    archive.open(entry) as input_file,
-                    target.open("xb") as output_file,
-                ):
-                    shutil.copyfileobj(input_file, output_file)
+            if isinstance(archive, zipfile.ZipFile):
+                for entry in archive.infolist():
+                    target = root.joinpath(*PurePosixPath(entry.filename).parts)
+                    if entry.is_dir():
+                        target.mkdir(parents=True, exist_ok=True)
+                        continue
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with (
+                        archive.open(entry) as input_file,
+                        target.open("xb") as output_file,
+                    ):
+                        shutil.copyfileobj(input_file, output_file)
+            else:
+                archive.extractall(path=root)
 
             selected_path = root.joinpath(*PurePosixPath(selected.filename).parts)
             yield replace(
@@ -80,19 +104,46 @@ class ArchiveManager:
             )
 
     @staticmethod
-    def _validate_entries(archive: zipfile.ZipFile) -> list[zipfile.ZipInfo]:
-        entries = archive.infolist()
+    def _zip_entries(archive: zipfile.ZipFile) -> list[ArchiveEntry]:
+        entries = []
+        for entry in archive.infolist():
+            mode = entry.external_attr >> 16
+            file_type = stat.S_IFMT(mode)
+            if file_type not in {0, stat.S_IFREG, stat.S_IFDIR} or (
+                file_type == stat.S_IFDIR and not entry.is_dir()
+            ):
+                raise ValueError(f"Unsupported ZIP member type: {entry.filename!r}")
+            if entry.flag_bits & 1:
+                raise ValueError(f"Encrypted ZIP member is not supported: {entry.filename!r}")
+            entries.append(ArchiveEntry(entry.filename, entry.is_dir(), entry.file_size))
+        return entries
+
+    @staticmethod
+    def _seven_entries(archive: py7zr.SevenZipFile) -> list[ArchiveEntry]:
+        if archive.needs_password():
+            raise ValueError("Encrypted 7z archives are not supported.")
+        entries = []
+        for entry in archive.list():
+            if entry.is_symlink or not (entry.is_file or entry.is_directory):
+                raise ValueError(f"Unsupported 7z member type: {entry.filename!r}")
+            entries.append(
+                ArchiveEntry(entry.filename, entry.is_directory, entry.uncompressed)
+            )
+        return entries
+
+    @staticmethod
+    def _validate_entries(entries: list[ArchiveEntry], archive_format: str) -> None:
         if len(entries) > MAX_ARCHIVE_FILES:
-            raise ValueError(f"ZIP contains more than {MAX_ARCHIVE_FILES} entries.")
-        if sum(entry.file_size for entry in entries) > MAX_UNCOMPRESSED_SIZE:
-            raise ValueError("ZIP exceeds the maximum uncompressed size of 10 GiB.")
+            raise ValueError(f"{archive_format} contains more than {MAX_ARCHIVE_FILES} entries.")
+        if sum(entry.size for entry in entries) > MAX_UNCOMPRESSED_SIZE:
+            raise ValueError(
+                f"{archive_format} exceeds the maximum uncompressed size of 10 GiB."
+            )
 
         seen: set[str] = set()
         for entry in entries:
             name = entry.filename
             parts = name.rstrip("/").split("/")
-            mode = entry.external_attr >> 16
-            file_type = stat.S_IFMT(mode)
             if (
                 not name
                 or "\\" in name
@@ -100,30 +151,23 @@ class ArchiveManager:
                 or PureWindowsPath(name).drive
                 or any(part in {"", ".", ".."} for part in parts)
             ):
-                raise ValueError(f"Unsafe ZIP member path: {name!r}")
-            if file_type not in {0, stat.S_IFREG, stat.S_IFDIR} or (
-                file_type == stat.S_IFDIR and not entry.is_dir()
-            ):
-                raise ValueError(f"Unsupported ZIP member type: {name!r}")
-            if entry.flag_bits & 1:
-                raise ValueError(f"Encrypted ZIP member is not supported: {name!r}")
+                raise ValueError(f"Unsafe {archive_format} member path: {name!r}")
             normalized = "/".join(parts)
             if normalized in seen:
-                raise ValueError(f"Duplicate ZIP member: {name!r}")
+                raise ValueError(f"Duplicate {archive_format} member: {name!r}")
             seen.add(normalized)
-        return entries
 
     @staticmethod
     def _select_member(
-        entries: list[zipfile.ZipInfo], member: object
-    ) -> zipfile.ZipInfo:
-        files = [entry for entry in entries if not entry.is_dir()]
+        entries: list[ArchiveEntry], member: object, archive_format: str
+    ) -> ArchiveEntry:
+        files = [entry for entry in entries if not entry.is_directory]
         if member is not None:
             if not isinstance(member, str) or not member:
-                raise ValueError("archive_member must be a non-empty ZIP member path.")
+                raise ValueError("archive_member must be a non-empty archive member path.")
             matches = [entry for entry in files if entry.filename == member]
             if not matches:
-                raise ValueError(f"ZIP member not found: {member!r}")
+                raise ValueError(f"{archive_format} member not found: {member!r}")
             return matches[0]
 
         candidates = [
@@ -134,7 +178,7 @@ class ArchiveManager:
         if len(candidates) != 1:
             names = ", ".join(entry.filename for entry in candidates) or "none"
             raise ValueError(
-                "ZIP must contain exactly one recognized dataset; "
+                f"{archive_format} must contain exactly one recognized dataset; "
                 f"found: {names}. Set source.options.archive_member."
             )
         return candidates[0]

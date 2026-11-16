@@ -215,7 +215,7 @@ requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5,<4" },
     { name = "pandas", specifier = ">=3.1.0,<4" },
     { name = "psycopg2-binary", specifier = ">=2.9.13,<3" },
-    { name = "py7zr", specifier = ">=1.0.0,<2" },
+    { name = "py7zr", specifier = ">=1.1.4,<2" },
     { name = "python-dotenv", specifier = ">=1.2.4,<2" },
     { name = "pyyaml", specifier = ">=6.0.3,<7" },
     { name = "requests", specifier = ">=2.34.2,<3" },
