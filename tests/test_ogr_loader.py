@@ -36,6 +36,17 @@ def test_shapefile_promotion_rejects_unknown_geometry(monkeypatch):
         OgrLoader._promote_to_multi(Path("data.shp"), "data", None)
 
 
+def test_validate_source_layer_handles_spaces(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        ogr_loader.subprocess,
+        "run",
+        lambda command, **kwargs: subprocess.CompletedProcess(
+            command, 0, stdout="1: layer with spaces\n2: another (Point)\n", stderr=""
+        ),
+    )
+    OgrLoader._validate_source_layer(tmp_path / "source.geojson", "layer with spaces")
+
+
 @pytest.mark.parametrize("value", ["true", 1, None, [], {}])
 def test_promotion_option_must_be_boolean(tmp_path, value):
     source_path = tmp_path / "source.geojson"

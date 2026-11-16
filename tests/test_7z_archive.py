@@ -29,7 +29,7 @@ def test_7z_csv_ingestion(database, tmp_path, tabular_source, source_type):
     result = IngestionRunner().run(source, DestinationConfig("postgis", "main"))
     assert result.success
     with database.connect() as connection:
-        assert connection.execute(text("SELECT * FROM population ORDER BY id")).all() == [
+        assert connection.execute(text("SELECT * FROM data ORDER BY id")).all() == [
             (1, "Lyon"), (2, "Paris")
         ]
 
@@ -57,7 +57,7 @@ def test_7z_select_member_and_discover_shapefile(
             assert path.with_suffix(".dbf").is_file()
             assert path.with_suffix(".shx").is_file()
             assert source.metadata["archive_member"] == "nested/test.shp"
-            assert destination.table == "test"
+            assert destination.table == "data"
             seen.append(path)
             now = datetime.now(UTC)
             return IngestionResult(source.source_name, True, now, now)

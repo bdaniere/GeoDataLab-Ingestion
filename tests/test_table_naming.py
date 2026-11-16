@@ -28,6 +28,18 @@ def test_generate_name_for_single_layer():
         "communes": "communes",
     }
 
+def test_generate_names_from_configured_source_name():
+    assert generate_table_names("other.gpkg", ["layer"], source_name="Bâtiments 69") == {
+        "layer": "batiments_69"
+    }
+    result = generate_table_names(
+        "other.gpkg", ["Layer One", "Layer Two"], source_name="A.B"
+    )
+    assert result == {
+        "Layer One": "a_b_layer_one",
+        "Layer Two": "a_b_layer_two",
+    }
+
 
 @pytest.mark.parametrize(
     ("identifier", "expected"),

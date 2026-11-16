@@ -1,3 +1,4 @@
+import json
 import subprocess
 
 from geodatalab_ingestion.extraction import layer_discovery
@@ -14,6 +15,15 @@ def test_parse_layer_listing():
     result = LayerDiscovery._parse_layer_listing(output)
 
     assert result == ["adresse", "bati", "activite"]
+
+
+def test_parse_layer_listing_without_geometry_and_with_spaces():
+    output = "1: batiments\n2: layer with spaces (Polygon)\n3: unnamed layer\n"
+    assert LayerDiscovery._parse_layer_listing(output) == [
+        "batiments",
+        "layer with spaces",
+        "unnamed layer",
+    ]
 
 
 def test_parse_layer_metadata():
@@ -100,3 +110,39 @@ def test_discover_real_layer_metadata(geopackage, ogrinfo):
     assert layer.geometry_type == "Point"
     assert layer.feature_count == 2
     assert layer.epsg == 4326
+
+
+def test_discover_geojson_with_unknown_geometry(tmp_path, ogrinfo):
+    source = tmp_path / "batiments.geojson"
+    source.write_text(
+        json.dumps(
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "properties": {},
+                        "geometry": {"type": "Point", "coordinates": [0, 0]},
+                    },
+                    {
+                        "type": "Feature",
+                        "properties": {},
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [[[0, 0], [1, 0], [0, 1], [0, 0]]],
+                        },
+                    },
+                ],
+            }
+        )
+    )
+    listing = subprocess.run(
+        ["ogrinfo", "-ro", "-q", str(source)],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    assert listing.strip() == "1: batiments"
+    layers = LayerDiscovery().discover(source)
+    assert [layer.name for layer in layers] == ["batiments"]
+    assert layers[0].feature_count == 2
