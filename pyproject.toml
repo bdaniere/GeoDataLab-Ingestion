@@ -1,33 +1,43 @@
-[tool.poetry]
+[project]
 name = "geodatalab-ingestion"
 version = "0.1.0"
 description = "Geospatial data ingestion library for GeoDataLab"
-authors = ["bdaniere <benjamin.daniere@gmail.com>"]
+authors = [{ name = "bdaniere", email = "benjamin.daniere@gmail.com" }]
+requires-python = "~=3.13.0"
 readme = "README.md"
-packages = [
-    { include = "geodatalab_ingestion", from = "src" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
 ]
-
-[tool.poetry.dependencies]
-python = "~3.13.0"
-geopandas = "^1.1.4"
-sqlalchemy = "^2.1.6"
-psycopg2-binary = "^2.9.13"
-geoalchemy2 = "^0.20.0"
-requests = "^2.34.2"
-python-dotenv = "^1.2.4"
-py7zr = "^1.0.0"
-pandas = "^3.1.0"
-pyyaml = "^6.0.3"
+dependencies = [
+    "geopandas>=1.1.4,<2",
+    "sqlalchemy>=2.1.6,<3",
+    "psycopg2-binary>=2.9.13,<3",
+    "geoalchemy2>=0.20.0,<0.21",
+    "requests>=2.34.2,<3",
+    "python-dotenv>=1.2.4,<2",
+    "py7zr>=1.0.0,<2",
+    "pandas>=3.1.0,<4",
+    "pyyaml>=6.0.3,<7",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 python_files = ["test_*.py"]
 
+[tool.hatch.build.targets.sdist]
+include = ["src/geodatalab_ingestion"]
+
+[tool.hatch.build.targets.wheel]
+include = ["src/geodatalab_ingestion"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/geodatalab_ingestion" = "geodatalab_ingestion"
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.black]
 line-length = 95
