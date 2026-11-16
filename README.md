@@ -18,4 +18,4 @@ Python library for geospatial data ingestion into PostgreSQL/PostGIS.
 
 ## Installation
 
-The library is designed to be installed as a Python dependency using Poetry.
+The library is designed to be installed as a Python dependency using UV.
