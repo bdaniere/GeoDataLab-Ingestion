@@ -2,8 +2,8 @@ import sqlite3
 from contextlib import closing
 
 import pytest
-from core.models import DestinationConfig, SourceData
-from loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.core.models import DestinationConfig, SourceData
+from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 from psycopg2 import sql
 
 

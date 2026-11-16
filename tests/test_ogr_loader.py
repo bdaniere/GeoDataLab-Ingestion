@@ -1,15 +1,13 @@
 import subprocess
 
 import pytest
-from core.models import DestinationConfig, SourceData
-from loaders.geographic import ogr_loader
-from loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.core.models import DestinationConfig, SourceData
+from geodatalab_ingestion.loaders.geographic import ogr_loader
+from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 
 
 @pytest.fixture
 def docker_env(tmp_path, monkeypatch):
-    module_path = tmp_path / "ingestion" / "loaders" / "geographic" / "ogr_loader.py"
-    monkeypatch.setattr(ogr_loader, "__file__", str(module_path))
     for name in (
         "POSTGRES_HOST",
         "POSTGIS_PORT",
@@ -17,10 +15,27 @@ def docker_env(tmp_path, monkeypatch):
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
     ):
+        monkeypatch.setenv(name, "")
         monkeypatch.delenv(name, raising=False)
     env_path = tmp_path / "docker" / ".env"
     env_path.parent.mkdir()
+    monkeypatch.setenv("GEODATALAB_ENV_FILE", str(env_path))
     return env_path
+
+
+def test_database_environment_uses_application_environment(docker_env, monkeypatch):
+    monkeypatch.delenv("GEODATALAB_ENV_FILE")
+    monkeypatch.setenv("POSTGRES_DB", "environment_db")
+    monkeypatch.setenv("POSTGRES_USER", "environment_user")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "environment_password")
+
+    environment = OgrLoader()._get_database_environment()
+
+    assert environment["PGHOST"] == "localhost"
+    assert environment["PGPORT"] == "5432"
+    assert environment["PGDATABASE"] == "environment_db"
+    assert environment["PGUSER"] == "environment_user"
+    assert environment["PGPASSWORD"] == "environment_password"
 
 
 def test_database_environment_uses_docker_variables(docker_env, monkeypatch):

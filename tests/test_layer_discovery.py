@@ -1,7 +1,7 @@
 import subprocess
 
-from extraction import layer_discovery
-from extraction.layer_discovery import LayerDiscovery
+from geodatalab_ingestion.extraction import layer_discovery
+from geodatalab_ingestion.extraction.layer_discovery import LayerDiscovery
 
 
 def test_parse_layer_listing():

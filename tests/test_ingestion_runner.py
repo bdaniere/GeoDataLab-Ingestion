@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from core.ingestion_runner import IngestionRunner
-from core.models import DestinationConfig, IngestionResult, SourceData
-from extraction.layer_discovery import LayerInfo
+from geodatalab_ingestion.core.ingestion_runner import IngestionRunner
+from geodatalab_ingestion.core.models import DestinationConfig, IngestionResult, SourceData
+from geodatalab_ingestion.extraction.layer_discovery import LayerInfo
 
 
 class FakeLayerDiscovery:

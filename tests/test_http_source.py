@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import requests
 
-from core.download_manager import DownloadError, DownloadManager
-from core.models import SourceConfig
-from core.sources.http_source import HttpSource, USER_AGENT
+from geodatalab_ingestion.core.download_manager import DownloadError, DownloadManager
+from geodatalab_ingestion.core.models import SourceConfig
+from geodatalab_ingestion.core.sources.http_source import HttpSource, USER_AGENT
 
 
 class FakeDownloadManager(DownloadManager):
@@ -118,7 +118,7 @@ def test_download_retries_interrupted_stream(tmp_path: Path) -> None:
     destination = tmp_path / "download.bin"
     headers = {"User-Agent": USER_AGENT}
 
-    with patch("core.download_manager.time.sleep") as sleep:
+    with patch("geodatalab_ingestion.core.download_manager.time.sleep") as sleep:
         download_manager.download("https://example.test/data", destination, headers=headers)
 
     assert session.get.call_count == 2
@@ -146,7 +146,7 @@ def test_download_gives_up_after_repeated_connection_errors(tmp_path: Path) -> N
     destination = tmp_path / "download.bin"
     destination.write_bytes(b"existing")
 
-    with patch("core.download_manager.time.sleep"):
+    with patch("geodatalab_ingestion.core.download_manager.time.sleep"):
         with pytest.raises(DownloadError, match="reset"):
             download_manager.download("https://example.test/data", destination)
 

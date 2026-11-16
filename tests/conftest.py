@@ -5,8 +5,8 @@ from uuid import uuid4
 
 import psycopg2
 import pytest
-from core.models import SourceData
-from loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.core.models import SourceData
+from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 from psycopg2 import sql
 from psycopg2.extensions import parse_dsn
 

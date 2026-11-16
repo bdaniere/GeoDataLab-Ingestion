@@ -1,5 +1,5 @@
 import pytest
-from core.table_naming import (
+from geodatalab_ingestion.core.table_naming import (
     generate_table_names,
     normalize_identifier,
 )
