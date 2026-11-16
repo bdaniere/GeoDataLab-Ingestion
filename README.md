@@ -67,6 +67,21 @@ such as postal codes must remain strings. The destination modes are `create`
 `target_crs` applies only to geographic data. Ingestion history and reports use
 the existing layer and feature terminology for sheets and rows.
 
+## Geographic geometry types
+
+Polygon shapefiles can contain both Polygon and MultiPolygon features, even
+when OGR reports their layer type as Polygon. By default the loader promotes
+polygon shapefile geometries to MultiPolygon, so PostGIS can store both types.
+This applies equally to shapefiles extracted from ZIPs. Point and line
+shapefiles and other source formats retain their existing behavior.
+
+Set `destination.options.promote_to_multi` to `true` to request OGR's
+`PROMOTE_TO_MULTI` for other formats or geometry types, or to `false` to disable
+automatic promotion. In append mode, the existing destination geometry column
+must be compatible with the resulting type; promotion does not alter it.
+Disabling promotion for mixed Polygon/MultiPolygon data can cause loading to
+fail.
+
 ## ZIP archives
 
 Local and HTTP sources can point to a ZIP archive. If an HTTP URL has no

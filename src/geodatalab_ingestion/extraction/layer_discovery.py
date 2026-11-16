@@ -59,7 +59,6 @@ class LayerDiscovery:
                     "ogrinfo",
                     "-ro",
                     "-so",
-                    "-q",
                     str(source_path),
                     layer_name,
                 ]
