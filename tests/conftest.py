@@ -5,10 +5,77 @@ from uuid import uuid4
 
 import psycopg2
 import pytest
-from geodatalab_ingestion.core.models import SourceData
-from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
 from psycopg2 import sql
 from psycopg2.extensions import parse_dsn
+from sqlalchemy import create_engine
+
+from geodatalab_ingestion.core.download_manager import DownloadManager
+from geodatalab_ingestion.core.ingestion_runner import IngestionRunner
+from geodatalab_ingestion.core.models import SourceConfig, SourceData
+from geodatalab_ingestion.core.sources.http_source import HttpSource
+from geodatalab_ingestion.core.sources.local_source import LocalSource
+from geodatalab_ingestion.loaders.geographic.ogr_loader import OgrLoader
+from geodatalab_ingestion.loaders.tabular import pandas_loader
+from geodatalab_ingestion.loaders.tabular.pandas_loader import PandasLoader
+
+
+@pytest.fixture
+def tabular_testdata():
+    path = Path(__file__).parent / "testdata" / "tabular"
+    assert path.is_dir(), f"Missing tabular test data: {path}"
+    return path
+
+
+@pytest.fixture
+def database(tmp_path, monkeypatch):
+    database_path = tmp_path / "test.sqlite"
+    engine = create_engine(f"sqlite:///{database_path}")
+    monkeypatch.setattr(pandas_loader, "create_engine", lambda url: engine)
+    monkeypatch.setattr(
+        PandasLoader, "_ensure_schema", staticmethod(lambda connection, schema: None)
+    )
+    monkeypatch.setattr(
+        OgrLoader,
+        "_get_database_environment",
+        lambda self: {
+            "PGHOST": "localhost",
+            "PGPORT": "5432",
+            "PGDATABASE": "test",
+            "PGUSER": "test",
+            "PGPASSWORD": "test",
+        },
+    )
+    monkeypatch.setattr(IngestionRunner, "_initialize_history", lambda self: None)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture
+def tabular_source(tmp_path):
+    def build_source(path, source_type, options=None, url=None):
+        options = dict(options or {})
+        if source_type == "local":
+            return LocalSource().extract(SourceConfig("data", "local", str(path), options))
+        if source_type != "http":
+            raise ValueError(f"Unsupported test source type: {source_type}")
+
+        class FakeDownload(DownloadManager):
+            def download(
+                self, url: str, destination: Path, headers: dict[str, str] | None = None
+            ) -> Path:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, destination)
+                return destination
+
+        options["download_dir"] = str(tmp_path / "downloads")
+        if url is None:
+            url = "https://example.test/download"
+            options["filename"] = path.name
+        return HttpSource(FakeDownload()).extract(
+            SourceConfig("data", "http", url, options)
+        )
+
+    return build_source
 
 
 @pytest.fixture

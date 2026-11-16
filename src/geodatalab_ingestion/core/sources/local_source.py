@@ -45,5 +45,10 @@ class LocalSource(BaseSource):
             metadata={
                 "file_path": str(file_path),
                 "file_size": file_path.stat().st_size,
+                **(
+                    {"read_options": config.options["read_options"]}
+                    if "read_options" in config.options
+                    else {}
+                ),
             },
         )
