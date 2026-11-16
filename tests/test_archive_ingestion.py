@@ -259,9 +259,11 @@ def test_selection_errors(tmp_path, files, member, message):
 def test_unsafe_paths_are_rejected(tmp_path, name):
     archive = make_zip(tmp_path / "data.zip", {name: "data", "safe.csv": "data"})
     source = SourceData("data", "local", archive, "zip", {"archive_member": "safe.csv"})
-    with pytest.raises(ValueError, match="Unsafe ZIP member path"):
-        with ArchiveManager().prepare(source):
-            pass
+    with (
+        pytest.raises(ValueError, match="Unsafe ZIP member path"),
+        ArchiveManager().prepare(source),
+    ):
+        pass
     assert not (tmp_path / "escape.csv").exists()
 
 
@@ -273,17 +275,21 @@ def test_symlinks_and_duplicate_members_are_rejected(tmp_path):
     with zipfile.ZipFile(archive, "w") as file:
         file.writestr("safe.csv", "id\n1\n")
         file.writestr(link, "../outside")
-    with pytest.raises(ValueError, match="Unsupported ZIP member type"):
-        with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
-            pass
+    with (
+        pytest.raises(ValueError, match="Unsupported ZIP member type"),
+        ArchiveManager().prepare(SourceData("data", "local", archive, "zip")),
+    ):
+        pass
 
     with zipfile.ZipFile(archive, "w") as file:
         file.writestr("safe.csv", "first")
         with pytest.warns(UserWarning, match="Duplicate name"):
             file.writestr("safe.csv", "second")
-    with pytest.raises(ValueError, match="Duplicate ZIP member"):
-        with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
-            pass
+    with (
+        pytest.raises(ValueError, match="Duplicate ZIP member"),
+        ArchiveManager().prepare(SourceData("data", "local", archive, "zip")),
+    ):
+        pass
 
 
 def test_content_detection_and_non_archive_validation(tmp_path):
@@ -303,32 +309,40 @@ def test_content_detection_and_non_archive_validation(tmp_path):
 
     plain = tmp_path / "data.csv"
     plain.write_text("id\n1\n")
-    with pytest.raises(ValueError, match="requires a ZIP or 7z"):
-        with ArchiveManager().prepare(
+    with (
+        pytest.raises(ValueError, match="requires a ZIP or 7z"),
+        ArchiveManager().prepare(
             SourceData("data", "local", plain, "csv", {"archive_member": "data.csv"})
-        ):
-            pass
+        ),
+    ):
+        pass
 
 
 def test_corrupt_zip_and_size_limit_are_rejected(tmp_path, monkeypatch):
     archive = tmp_path / "data.zip"
     archive.write_bytes(b"not a zip")
-    with pytest.raises(zipfile.BadZipFile):
-        with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
-            pass
+    with (
+        pytest.raises(zipfile.BadZipFile),
+        ArchiveManager().prepare(SourceData("data", "local", archive, "zip")),
+    ):
+        pass
     make_zip(archive, {"data.csv": "id\n1\n"})
     monkeypatch.setattr(
         "geodatalab_ingestion.extraction.archive_manager.MAX_UNCOMPRESSED_SIZE", 3
     )
-    with pytest.raises(ValueError, match="maximum uncompressed size"):
-        with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
-            pass
+    with (
+        pytest.raises(ValueError, match="maximum uncompressed size"),
+        ArchiveManager().prepare(SourceData("data", "local", archive, "zip")),
+    ):
+        pass
     monkeypatch.setattr(
         "geodatalab_ingestion.extraction.archive_manager.MAX_UNCOMPRESSED_SIZE", 100
     )
     monkeypatch.setattr(
         "geodatalab_ingestion.extraction.archive_manager.MAX_ARCHIVE_FILES", 0
     )
-    with pytest.raises(ValueError, match="more than 0 entries"):
-        with ArchiveManager().prepare(SourceData("data", "local", archive, "zip")):
-            pass
+    with (
+        pytest.raises(ValueError, match="more than 0 entries"),
+        ArchiveManager().prepare(SourceData("data", "local", archive, "zip")),
+    ):
+        pass
