@@ -103,8 +103,10 @@ def test_append_missing_table_and_invalid_options_fail(database, tabular_testdat
         loader.load(source, DestinationConfig("postgis", "main", "data"))
 
 
-def test_runner_reports_csv_read_errors(database, tabular_testdata):
-    source = SourceData("empty", "local", tabular_testdata / "empty.csv")
+def test_runner_reports_csv_read_errors(database, tmp_path):
+    empty_csv = tmp_path / "empty.csv"
+    empty_csv.touch()
+    source = SourceData("empty", "local", empty_csv)
 
     result = IngestionRunner().run(source, DestinationConfig("postgis", "main"))
 

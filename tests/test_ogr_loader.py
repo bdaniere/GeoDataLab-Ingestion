@@ -64,7 +64,7 @@ def test_promotion_option_must_be_boolean(tmp_path, value):
 def docker_env(tmp_path, monkeypatch):
     for name in (
         "POSTGRES_HOST",
-        "POSTGIS_PORT",
+        "POSTGRES_PORT",
         "POSTGRES_DB",
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
@@ -97,7 +97,7 @@ def test_database_environment_uses_docker_variables(docker_env, monkeypatch):
         "POSTGRES_USER=file_user\n"
         "POSTGRES_PASSWORD=file_password\n"
         "POSTGRES_DB=file_db\n"
-        "POSTGIS_PORT=5423\n"
+        "POSTGRES_PORT=5423\n"
     )
     monkeypatch.setenv("POSTGRES_USER", "environment_user")
     monkeypatch.setenv("UNRELATED_VARIABLE", "preserved")
@@ -152,7 +152,7 @@ def test_database_environment_reports_missing_or_empty_variables(docker_env):
     assert "POSTGRES_PASSWORD" in str(error.value)
 
 
-@pytest.mark.parametrize("variable", ["POSTGRES_HOST", "POSTGIS_PORT"])
+@pytest.mark.parametrize("variable", ["POSTGRES_HOST", "POSTGRES_PORT"])
 def test_database_environment_reports_empty_host_or_port(docker_env, variable):
     docker_env.write_text(
         f"POSTGRES_USER=user\nPOSTGRES_PASSWORD=password\nPOSTGRES_DB=db\n{variable}=\n"
@@ -165,7 +165,7 @@ def test_database_environment_reports_empty_host_or_port(docker_env, variable):
 def test_load_passes_database_environment_to_ogr2ogr(docker_env, tmp_path, monkeypatch):
     docker_env.write_text(
         "POSTGRES_USER=user\nPOSTGRES_PASSWORD=password\n"
-        "POSTGRES_DB=db\nPOSTGIS_PORT=5423\n"
+        "POSTGRES_DB=db\nPOSTGRES_PORT=5423\n"
     )
     source_path = tmp_path / "source.gpkg"
     source_path.touch()
@@ -209,7 +209,7 @@ def test_load_creates_destination_schema(docker_env, tmp_path, monkeypatch):
         "POSTGRES_USER=user\n"
         "POSTGRES_PASSWORD=password\n"
         "POSTGRES_DB=db\n"
-        "POSTGIS_PORT=5423\n"
+        "POSTGRES_PORT=5423\n"
     )
     source_path = tmp_path / "source.gpkg"
     source_path.touch()

@@ -584,7 +584,7 @@ class OgrLoader(BaseLoader):
 
         config = {
             "POSTGRES_HOST": environment.get("POSTGRES_HOST", "localhost"),
-            "POSTGIS_PORT": environment.get("POSTGIS_PORT", "5432"),
+            "POSTGRES_PORT": environment.get("POSTGRES_PORT", "5432"),
             "POSTGRES_DB": environment.get("POSTGRES_DB", ""),
             "POSTGRES_USER": environment.get("POSTGRES_USER", ""),
             "POSTGRES_PASSWORD": environment.get("POSTGRES_PASSWORD", ""),
@@ -603,7 +603,7 @@ class OgrLoader(BaseLoader):
         environment.update(
             {
                 "PGHOST": config["POSTGRES_HOST"],
-                "PGPORT": config["POSTGIS_PORT"],
+                "PGPORT": config["POSTGRES_PORT"],
                 "PGDATABASE": config["POSTGRES_DB"],
                 "PGUSER": config["POSTGRES_USER"],
                 "PGPASSWORD": config["POSTGRES_PASSWORD"],
